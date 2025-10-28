@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>React Random Products</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="js-container w-full max-w-2xl"></div>
+
+    <!-- React + Babel -->
+    <script src="https://unpkg.com/supersimpledev/react.js"></script>
+    <script src="https://unpkg.com/supersimpledev/react-dom.js"></script>
+    <script src="https://unpkg.com/supersimpledev/babel.js"></script>
+
+    <script type="text/babel">
+      const { useState, useEffect } = React;
+
+      function ShoppingList() {
+        const [name, setName] = useState("");
+        const [data, setData] = useState([]);
+
+        // Load existing data from backend
+        useEffect(() => {
+          fetch("http://localhost/reactPhp/insert.php")
+            .then((res) => res.json())
+            .then((result) => setData(result))
+            .catch((err) => console.error("Error loading:", err));
+        }, []);
+
+        // Handle form submission
+        async function handleSubmit(e) {
+          e.preventDefault();
+
+          if (!name.trim()) {
+            alert("Please enter a name");
+            return;
+          }
+
+          try {
+            const response = await fetch(
+              "http://localhost/reactPhp/insert.php",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name }),
+              }
+            );
+
+            const result = await response.json();
+            console.log(result);
+
+            // Update the list instantly
+            setData((prev) => [...prev, { idUsers: prev.length + 1, name }]);
+            setName("");
+          } catch (error) {
+            console.error("Error saving:", error);
+          }
+        }
+
+        return (
+          <div className="bg-white shadow-lg rounded-2xl p-8 w-full">
+            <h2 className="text-2xl font-semibold text-center text-blue-600 mb-6">
+              React + PHP Insert Example
+            </h2>
+
+            <form
+              onSubmit={handleSubmit}
+              className="flex items-center gap-3 mb-6 justify-center"
+            >
+              <input
+                type="text"
+                name="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter name"
+                className="w-2/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
+              />
+              <button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition"
+              >
+                INSERT
+              </button>
+            </form>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border border-gray-300 text-center text-sm rounded-lg overflow-hidden">
+                <thead className="bg-blue-100">
+                  <tr>
+                    <th className="border border-gray-300 px-3 py-2">ID</th>
+                    <th className="border border-gray-300 px-3 py-2">NAME</th>
+                    <th className="border border-gray-300 px-3 py-2">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((item, i) => (
+                    <tr
+                      key={i}
+                      className="hover:bg-blue-50 transition duration-200"
+                    >
+                      <td className="border border-gray-300 px-3 py-2">
+                        {item.idUsers}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2">
+                        {item.name}
+                      </td>
+                      <td className="border border-gray-300 px-3 py-2 text-gray-500 italic">
+                        —
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+
+      const container = document.querySelector(".js-container");
+      ReactDOM.createRoot(container).render(<ShoppingList />);
+    </script>
+  </body>
+</html>
