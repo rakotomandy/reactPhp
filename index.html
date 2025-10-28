@@ -1,82 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- Meta tags for proper character encoding and responsive design -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>React Random Products</title>
+
+    <!-- Include Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
+
+  <!-- Apply Tailwind classes for background and center alignment -->
   <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <!-- Container where React will render the app -->
     <div class="js-container w-full max-w-2xl"></div>
 
-    <!-- React + Babel -->
+    <!-- Load React, ReactDOM, and Babel for JSX support -->
     <script src="https://unpkg.com/supersimpledev/react.js"></script>
     <script src="https://unpkg.com/supersimpledev/react-dom.js"></script>
     <script src="https://unpkg.com/supersimpledev/babel.js"></script>
 
+    <!-- React code -->
     <script type="text/babel">
+      // Destructure React hooks for convenience
       const { useState, useEffect } = React;
 
+      // Define the main component
       function ShoppingList() {
+        // State to store input field value
         const [name, setName] = useState("");
+        // State to store the list of users fetched from backend
         const [data, setData] = useState([]);
 
-        // Load existing data from backend
+        // useEffect runs once on component mount to fetch existing data
         useEffect(() => {
+          // Fetch data from PHP backend
           fetch("http://localhost/reactPhp/insert.php")
-            .then((res) => res.json())
-            .then((result) => setData(result))
-            .catch((err) => console.error("Error loading:", err));
-        }, []);
+            .then((res) => res.json()) // Convert response to JSON
+            .then((result) => setData(result)) // Set fetched data into state
+            .catch((err) => console.error("Error loading:", err)); // Handle errors
+        }, []); // Empty dependency array → runs only once
 
-        // Handle form submission
+        // Handle form submission for adding a new name
         async function handleSubmit(e) {
-          e.preventDefault();
+          e.preventDefault(); // Prevent page reload on form submit
 
+          // Simple validation to ensure input is not empty
           if (!name.trim()) {
             alert("Please enter a name");
             return;
           }
 
           try {
+            // Send POST request to backend with JSON data
             const response = await fetch(
               "http://localhost/reactPhp/insert.php",
               {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name }),
+                method: "POST", // HTTP method
+                headers: { "Content-Type": "application/json" }, // JSON payload
+                body: JSON.stringify({ name }), // Convert state to JSON
               }
             );
 
-            const result = await response.json();
-            console.log(result);
+            const result = await response.json(); // Parse backend response
+            console.log(result); // Log backend message
 
-            // Update the list instantly
+            // Update frontend list instantly without re-fetching
             setData((prev) => [...prev, { idUsers: prev.length + 1, name }]);
-            setName("");
+            setName(""); // Clear input field
           } catch (error) {
-            console.error("Error saving:", error);
+            console.error("Error saving:", error); // Handle errors
           }
         }
 
+        // JSX returned by the component
         return (
           <div className="bg-white shadow-lg rounded-2xl p-8 w-full">
+            {/* Heading */}
             <h2 className="text-2xl font-semibold text-center text-blue-600 mb-6">
               React + PHP Insert Example
             </h2>
 
+            {/* Form for inserting a new name */}
             <form
-              onSubmit={handleSubmit}
+              onSubmit={handleSubmit} // Connect form submit to handler
               className="flex items-center gap-3 mb-6 justify-center"
             >
+              {/* Input field */}
               <input
                 type="text"
                 name="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={name} // Bind input to state
+                onChange={(e) => setName(e.target.value)} // Update state on typing
                 placeholder="Enter name"
                 className="w-2/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
               />
+              {/* Submit button */}
               <button
                 type="submit"
                 className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition"
@@ -85,6 +104,7 @@
               </button>
             </form>
 
+            {/* Table to display users */}
             <div className="overflow-x-auto">
               <table className="w-full border border-gray-300 text-center text-sm rounded-lg overflow-hidden">
                 <thead className="bg-blue-100">
@@ -95,19 +115,20 @@
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Map over the data array and render each row */}
                   {data.map((item, i) => (
                     <tr
-                      key={i}
+                      key={i} // Unique key for each row
                       className="hover:bg-blue-50 transition duration-200"
                     >
                       <td className="border border-gray-300 px-3 py-2">
-                        {item.idUsers}
+                        {item.idUsers} {/* Display user ID */}
                       </td>
                       <td className="border border-gray-300 px-3 py-2">
-                        {item.name}
+                        {item.name} {/* Display user name */}
                       </td>
                       <td className="border border-gray-300 px-3 py-2 text-gray-500 italic">
-                        —
+                        — {/* Placeholder for action buttons */}
                       </td>
                     </tr>
                   ))}
@@ -118,7 +139,10 @@
         );
       }
 
+      // Select the container div where React will render
       const container = document.querySelector(".js-container");
+
+      // Render the ShoppingList component into the container
       ReactDOM.createRoot(container).render(<ShoppingList />);
     </script>
   </body>
