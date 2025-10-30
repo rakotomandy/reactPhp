@@ -1,149 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <!-- Meta tags for proper character encoding and responsive design -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>React Random Products</title>
-
-    <!-- Include Tailwind CSS for styling -->
+    <title>React + PHP – Lift State Up</title>
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
 
-  <!-- Apply Tailwind classes for background and center alignment -->
-  <body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <!-- Container where React will render the app -->
-    <div class="js-container w-full max-w-2xl"></div>
+  <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div id="root" class="w-full max-w-2xl"></div>
 
-    <!-- Load React, ReactDOM, and Babel for JSX support -->
-    <script src="https://unpkg.com/supersimpledev/react.js"></script>
-    <script src="https://unpkg.com/supersimpledev/react-dom.js"></script>
-    <script src="https://unpkg.com/supersimpledev/babel.js"></script>
+    <!-- React + Babel (CDN) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- React code -->
     <script type="text/babel">
-      // Destructure React hooks for convenience
       const { useState, useEffect } = React;
 
-      // Define the main component
-      function ShoppingList() {
-        // State to store input field value
-        const [name, setName] = useState("");
-        // State to store the list of users fetched from backend
+      /* -------------------------------------------------
+       1. PARENT – owns the shared state (lifted up)
+       ------------------------------------------------- */
+      function App() {
         const [data, setData] = useState([]);
 
-        // useEffect runs once on component mount to fetch existing data
+        // ---------- FETCH ALL ----------
         useEffect(() => {
-          // Fetch data from PHP backend
-          fetch("http://localhost/reactPhp/insert.php")
-            .then((res) => res.json()) // Convert response to JSON
-            .then((result) => setData(result)) // Set fetched data into state
-            .catch((err) => console.error("Error loading:", err)); // Handle errors
-        }, []); // Empty dependency array → runs only once
+          fetch("http://localhost/mvc/form/data")
+            .then((r) => {
+              if (!r.ok) throw new Error("Network error");
+              return r.json();
+            })
+            .then(setData)
+            .catch((err) => {
+              console.error(err);
+              alert("Could not load data – is PHP running?");
+            });
+        }, []);
 
-        // Handle form submission for adding a new name
-        async function handleSubmit(e) {
-          e.preventDefault(); // Prevent page reload on form submit
+        // ---------- INSERT ----------
+        const handleInsert = async (name) => {
+          if (!name.trim()) return { success: false, message: "Name required" };
 
-          // Simple validation to ensure input is not empty
-          if (!name.trim()) {
-            alert("Please enter a name");
-            return;
+          const res = await fetch("http://localhost/mvc/form/insert", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name.trim() }),
+          });
+          const json = await res.json();
+
+          if (json.success) {
+            const newItem = { idUsers: json.id, name: name.trim() };
+            setData((prev) => [...prev, newItem]);
           }
+          return json; // let child show errors if needed
+        };
 
-          try {
-            // Send POST request to backend with JSON data
-            const response = await fetch(
-              "http://localhost/reactPhp/insert.php",
-              {
-                method: "POST", // HTTP method
-                headers: { "Content-Type": "application/json" }, // JSON payload
-                body: JSON.stringify({ name }), // Convert state to JSON
-              }
-            );
+        // ---------- DELETE ----------
+        const handleDelete = async (index) => {
+          const item = data[index];
+          const res = await fetch("http://localhost/mvc/form/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: item.idUsers }),
+          });
+          const json = await res.json();
 
-            const result = await response.json(); // Parse backend response
-            console.log(result); // Log backend message
-
-            // Update frontend list instantly without re-fetching
-            setData((prev) => [...prev, { idUsers: prev.length + 1, name }]);
-            setName(""); // Clear input field
-          } catch (error) {
-            console.error("Error saving:", error); // Handle errors
+          if (json.success) {
+            setData((prev) => prev.filter((_, i) => i !== index));
+          } else {
+            alert(json.message || "Delete failed");
           }
-        }
+        };
 
-        // JSX returned by the component
         return (
-          <div className="bg-white shadow-lg rounded-2xl p-8 w-full">
-            {/* Heading */}
-            <h2 className="text-2xl font-semibold text-center text-blue-600 mb-6">
-              React + PHP Insert Example
+          <div className="bg-white shadow-xl rounded-2xl p-8">
+            <h2 className="text-3xl font-bold text-center text-indigo-600 mb-8">
+              React + PHP – Lift State Up
             </h2>
 
-            {/* Form for inserting a new name */}
-            <form
-              onSubmit={handleSubmit} // Connect form submit to handler
-              className="flex items-center gap-3 mb-6 justify-center"
-            >
-              {/* Input field */}
-              <input
-                type="text"
-                name="name"
-                value={name} // Bind input to state
-                onChange={(e) => setName(e.target.value)} // Update state on typing
-                placeholder="Enter name"
-                className="w-2/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none"
-              />
-              {/* Submit button */}
-              <button
-                type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg shadow-md transition"
-              >
-                INSERT
-              </button>
-            </form>
-
-            {/* Table to display users */}
-            <div className="overflow-x-auto">
-              <table className="w-full border border-gray-300 text-center text-sm rounded-lg overflow-hidden">
-                <thead className="bg-blue-100">
-                  <tr>
-                    <th className="border border-gray-300 px-3 py-2">ID</th>
-                    <th className="border border-gray-300 px-3 py-2">NAME</th>
-                    <th className="border border-gray-300 px-3 py-2">ACTION</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* Map over the data array and render each row */}
-                  {data.map((item, i) => (
-                    <tr
-                      key={i} // Unique key for each row
-                      className="hover:bg-blue-50 transition duration-200"
-                    >
-                      <td className="border border-gray-300 px-3 py-2">
-                        {item.idUsers} {/* Display user ID */}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2">
-                        {item.name} {/* Display user name */}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-2 text-gray-500 italic">
-                        — {/* Placeholder for action buttons */}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <InsertForm onInsert={handleInsert} />
+            <UsersTable data={data} onDelete={handleDelete} />
           </div>
         );
       }
 
-      // Select the container div where React will render
-      const container = document.querySelector(".js-container");
+      /* -------------------------------------------------
+       2. CHILD – Insert form (receives callback)
+       ------------------------------------------------- */
+      function InsertForm({ onInsert }) {
+        const [name, setName] = useState("");
 
-      // Render the ShoppingList component into the container
-      ReactDOM.createRoot(container).render(<ShoppingList />);
+        const submit = async (e) => {
+          e.preventDefault();
+          const result = await onInsert(name);
+          if (result.success) setName("");
+          else alert(result.message || "Insert failed");
+        };
+
+        return (
+          <form onSubmit={submit} className="flex gap-3 mb-8">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter name"
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition"
+            />
+            <button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-lg shadow-md transition"
+            >
+              INSERT
+            </button>
+          </form>
+        );
+      }
+
+      /* -------------------------------------------------
+       3. CHILD – Table (receives data + delete callback)
+       ------------------------------------------------- */
+      function UsersTable({ data, onDelete }) {
+        if (data.length === 0) {
+          return (
+            <p className="text-center text-gray-500 py-8">
+              No users yet – add one above!
+            </p>
+          );
+        }
+
+        return (
+          <div className="overflow-x-auto rounded-lg shadow">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-indigo-100 text-indigo-800">
+                <tr>
+                  <th className="border border-gray-300 px-4 py-3 font-semibold">
+                    ID
+                  </th>
+                  <th className="border border-gray-300 px-4 py-3 font-semibold">
+                    NAME
+                  </th>
+                  <th className="border border-gray-300 px-4 py-3 font-semibold">
+                    ACTION
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((item, i) => (
+                  <tr
+                    key={item.idUsers}
+                    className="hover:bg-indigo-50 transition"
+                  >
+                    <td className="border border-gray-300 px-4 py-3 text-center">
+                      {item.idUsers}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3">
+                      {item.name}
+                    </td>
+                    <td className="border border-gray-300 px-4 py-3 text-center">
+                      <button
+                        onClick={() => onDelete(i)}
+                        className="bg-red-500 hover:bg-red-600 text-white font-bold px-4 py-1 rounded transition"
+                      >
+                        DELETE
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+
+      /* -------------------------------------------------
+       Render
+       ------------------------------------------------- */
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
     </script>
   </body>
 </html>
