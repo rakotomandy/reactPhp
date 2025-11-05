@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>React + PHP – Lift State Up</title>
+    <title>React + PHP – CRUD with SweetAlert2</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
 
-  <body
-    class="bg-gray-100 min-h-screen flex mt-[200px] overflow-hidden justify-center p-4"
-  >
+  <body class="bg-gray-100 min-h-screen flex mt-[100px] justify-center p-4">
     <div id="root" class="w-full max-w-2xl"></div>
 
-    <!-- React + Babel (CDN) -->
+    <!-- React + Babel -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -27,35 +27,73 @@
           getData();
         }, []);
 
+        // Fetch all users
         async function getData() {
           const res = await fetch("http://localhost/mvc/form/data");
           const json = await res.json();
           setData(json);
         }
 
+        // Insert new user
         async function handleSubmit(name, email) {
-          const send = await fetch("http://localhost/mvc/form/insert", {
+          const res = await fetch("http://localhost/mvc/form/insert", {
             method: "POST",
-            headers: { "content-type": "application/json" },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: name.trim(), email: email.trim() }),
           });
-
-          if (send.json()) {
-            alert("user inserted successfully");
+          if (res.ok) {
+            alert("User inserted successfully");
             getData();
           }
         }
+
+        // Update user via SweetAlert2
+        function handleUpdate(user) {
+          Swal.fire({
+            title: "Update User",
+            html: `
+              <input id="swal-name" class="swal2-input" placeholder="Name" value="${user.name}">
+              <input id="swal-email" class="swal2-input" placeholder="Email" value="${user.email}">
+            `,
+            showCancelButton: true,
+            confirmButtonText: "Save",
+            preConfirm: () => {
+              const newName = document.getElementById("swal-name").value;
+              const newEmail = document.getElementById("swal-email").value;
+              if (!newName || !newEmail) {
+                Swal.showValidationMessage("Please enter both name and email");
+                return false;
+              }
+              return { newName, newEmail };
+            }
+          }).then(async (result) => {
+            if (result.isConfirmed) {
+              const { newName, newEmail } = result.value;
+              await fetch("http://localhost/mvc/form/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: user.idUsers, name: newName, email: newEmail }),
+              });
+              Swal.fire("Updated!", "User updated successfully", "success");
+              getData();
+            }
+          });
+        }
+
         return (
           <div>
-            <InsertForm data={data} handleSubmit={handleSubmit} />
+            <InsertForm handleSubmit={handleSubmit} />
+            <UserTable data={data} onEdit={handleUpdate} />
           </div>
         );
       }
 
-      function InsertForm({ handleSubmit, data }) {
+      // ---------- Insert Form ----------
+      function InsertForm({ handleSubmit }) {
         const [name, setName] = useState("");
         const [email, setEmail] = useState("");
-        const submitUser = async (e) => {
+
+        const submitUser = (e) => {
           e.preventDefault();
           handleSubmit(name, email);
           setName("");
@@ -63,64 +101,74 @@
         };
 
         return (
-          <>
-            <form
-              onSubmit={submitUser}
-              className=" flex gap-3 justify-center w-200 bg-green-200 p-4 rounded"
+          <form
+            onSubmit={submitUser}
+            className="flex gap-3 justify-center bg-green-200 p-4 rounded mb-6"
+          >
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="bg-yellow-500 rounded p-2 text-white outline-none focus:border-2 focus:border-blue-300"
+              placeholder="Insert name"
+            />
+            <input
+              type="text"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="bg-yellow-500 rounded p-2 text-white outline-none focus:border-2 focus:border-blue-300"
+              placeholder="Insert email"
+            />
+            <button
+              type="submit"
+              className="bg-blue-400 p-2 text-black rounded-md font-semibold"
             >
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="bg-yellow-500 rounded p-2 text-white outline-none focus:border-2 focus:border-blue-300"
-                placeholder="INSERT THE NAME"
-              />
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="bg-yellow-500 rounded p-2 text-white outline-none focus:border-2 focus:border-blue-300"
-                placeholder="INSERT THE NAME"
-              />
-
-              <button
-                type="submit"
-                className="bg-blue-400 p-2 text-black rounded-md font-semibold"
-              >
-                INSERT
-              </button>
-            </form>
-            <div>
-              <table className="border border-collapse w-[520.5px]">
-                <thead className="bg-gray-200">
-                  <tr>
-                    <th className="border border-gray-300">ID</th>
-                    <th className="border border-gray-300">NAME</th>
-                    <th className="border border-gray-300">EMAIL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {
-                    (data.length == 0 ? (
-                      <tr className="text-center"><td col="3">NO USERS YET</td></tr>
-                    ) : (
-                      data.map((d, index) => 
-                      <tr className="hover:bg-red-200" key={d.idUsers}>
-                        <td className="border border-blue-200 text-center ">{d.idUsers}</td>
-                        <td className="border border-blue-200 text-center ">{d.name}</td>
-                        <td className="border border-blue-200 text-center ">{d.email}</td>
-                      </tr>)
-                    ))
-                  }
-                </tbody>
-              </table>
-            </div>
-          </>
+              INSERT
+            </button>
+          </form>
         );
       }
-      /* -------------------------------------------------
-            Render
-            ------------------------------------------------- */
+
+      // ---------- User Table ----------
+      function UserTable({ data, onEdit }) {
+        return (
+          <table className="border border-collapse w-full">
+            <thead className="bg-gray-200">
+              <tr>
+                <th className="border border-gray-300">ID</th>
+                <th className="border border-gray-300">NAME</th>
+                <th className="border border-gray-300">EMAIL</th>
+                <th className="border border-gray-300">ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.length === 0 ? (
+                <tr className="text-center">
+                  <td colSpan="4">No users yet</td>
+                </tr>
+              ) : (
+                data.map((d) => (
+                  <tr key={d.idUsers} className="hover:bg-red-100">
+                    <td className="border border-blue-200 text-center">{d.idUsers}</td>
+                    <td className="border border-blue-200 text-center">{d.name}</td>
+                    <td className="border border-blue-200 text-center">{d.email}</td>
+                    <td className="border border-blue-200 text-center">
+                      <button
+                        onClick={() => onEdit(d)}
+                        className="bg-orange-400 px-3 py-1 rounded text-white"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        );
+      }
+
+      // ---------- Render ----------
       const root = ReactDOM.createRoot(document.getElementById("root"));
       root.render(<App />);
     </script>
